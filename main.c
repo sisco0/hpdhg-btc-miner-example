@@ -1,37 +1,40 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <malloc.h>
-#include <string.h>
-#include <time.h>
+#include "functions.h"
 
-#include <openssl/sha.h>
-
-#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-#define BYTE_TO_BINARY(byte)  \
-  (byte & 0x80 ? '1' : '0'), \
-  (byte & 0x40 ? '1' : '0'), \
-  (byte & 0x20 ? '1' : '0'), \
-  (byte & 0x10 ? '1' : '0'), \
-  (byte & 0x08 ? '1' : '0'), \
-  (byte & 0x04 ? '1' : '0'), \
-  (byte & 0x02 ? '1' : '0'), \
-  (byte & 0x01 ? '1' : '0')
-
-typedef struct _transaction {
-    uint32_t from;
-    uint32_t to;
-    uint32_t value;
-} transaction;
-
-typedef struct _block {
-    unsigned char prev_hash[SHA256_DIGEST_LENGTH];
-    uint32_t timestamp;
-    uint32_t nonce;
-    uint32_t difficulty;
-    uint32_t transactionsLen;
-    transaction *transactions;
-} block;
+int main(int argc, char **argv) {
+    /*
+     * The root block always contains
+     * 0x00 as its previous hash.
+     */
+    block blockchain[1024];
+    block currentBlock = {
+        /* prev_hash */
+        0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
+        /* timestamp */
+        time(NULL),
+        /* nonce */
+        0x00000000,
+        /* difficulty */
+        0x00000014,
+        /* transactionLen */
+        0x0,
+        /* transaction array */
+        0x00
+    };
+    uint32_t wallets[] = {
+        0x00001337,
+        0x0000C320,
+        0x12345678,
+    };
+    addTransaction(&currentBlock, wallets[0], wallets[1], 10);
+    addTransaction(&currentBlock, wallets[1], wallets[2], 30);
+    // Mine current block
+    currentBlock.nonce = mineBlock(currentBlock);
+    printBlock(currentBlock, 0);
+    return 0;
+}
 
 void addTransaction(
         block *targetBlock,
@@ -48,6 +51,7 @@ void addTransaction(
                 newTransactions, targetBlock->transactions,
                 sizeof(transaction) * (targetBlock->transactionsLen - 1)
         );
+        free(targetBlock->transactions);
     }
     newTransactions[targetBlock->transactionsLen-1] = newTransaction;
     targetBlock->transactions = newTransactions;
@@ -115,37 +119,4 @@ void printBlock(block current_block, uint32_t block_idx)
         printf(BYTE_TO_BINARY_PATTERN " ", BYTE_TO_BINARY(current_hash[k]));
     }
     printf("\n============================\n");
-}
-
-int main(int argc, char **argv) {
-    /*
-     * The root block always contains
-     * 0x00 as its previous hash.
-     */
-    block blockchain[1024];
-    block currentBlock = {
-        0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-        0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-        0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-        0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-        time(NULL),
-        0x00000000,
-        0x00000014,
-        0x0,
-        0x00
-    };
-    uint32_t wallets[] = {
-        0x00001337,
-        0x0000C320,
-        0x12345678,
-    };
-    addTransaction(&currentBlock, wallets[0], wallets[1], 10);
-    addTransaction(&currentBlock, wallets[1], wallets[2], 30);
-    // Mine current block
-    currentBlock.nonce = mineBlock(currentBlock);
-    printBlock(currentBlock, 0);
-
-    
-
-    return 0;
 }
